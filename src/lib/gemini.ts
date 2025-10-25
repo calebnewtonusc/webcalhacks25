@@ -118,7 +118,7 @@ User: ${userMessage}
 Silk:`;
 
     const { text } = await generateText({
-      model: google('gemini-2.0-flash-exp'),
+      model: google('gemini-1.5-flash'),
       prompt: fullPrompt,
       maxTokens: 500,
       temperature: 0.7,
@@ -168,7 +168,7 @@ Keep it brief and actionable.`;
 
   try {
     const { text } = await generateText({
-      model: google('gemini-2.0-flash-exp'),
+      model: google('gemini-1.5-flash'),
       prompt,
       maxTokens: 400,
       temperature: 0.7,
@@ -203,7 +203,7 @@ Make it specific, warm, and actionable based on their interests.`;
 
   try {
     const { text } = await generateText({
-      model: google('gemini-2.0-flash-exp'),
+      model: google('gemini-1.5-flash'),
       prompt,
       maxTokens: 100,
       temperature: 0.8,
