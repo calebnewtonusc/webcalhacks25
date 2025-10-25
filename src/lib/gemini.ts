@@ -3,6 +3,8 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 
 const apiKey = import.meta.env.VITE_GOOGLE_GENERATIVE_AI_API_KEY;
 
+console.log('API Key loaded:', apiKey ? 'YES (length: ' + apiKey.length + ')' : 'NO');
+
 if (!apiKey) {
   console.warn('Google Generative AI API key not found. Gemini AI features will be limited.');
 }
