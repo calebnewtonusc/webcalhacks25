@@ -49,6 +49,7 @@ function App() {
           <Router>
             <div className="App">
               <Routes>
+                Hello world
                 <Route path="/" element={<WebView />} />
                 <Route path="/assistant" element={<SilkAssistant />} />
                 <Route path="/reminders" element={<Reminders />} />
