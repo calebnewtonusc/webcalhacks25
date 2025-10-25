@@ -155,6 +155,13 @@ Track your social life with:
 - Row Level Security (RLS) enabled
 - Real-time subscriptions
 
+### AI & Intelligence
+- **Claude AI by Anthropic** - Powers Silk assistant and backend intelligence
+- Natural language processing for interactions
+- Relationship health analysis
+- Personalized reconnection suggestions
+- Context-aware conversations
+
 ### Mobile-First Design
 - Optimized for **iPhone 16** (393x852)
 - Touch gestures (pinch to zoom, swipe, drag)
@@ -204,7 +211,14 @@ Four beautiful themes to choose from:
    ```env
    VITE_SUPABASE_URL=your_supabase_project_url
    VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   VITE_ANTHROPIC_API_KEY=your_anthropic_api_key
    ```
+
+   **Get your Anthropic API key:**
+   - Sign up at [https://console.anthropic.com](https://console.anthropic.com)
+   - Navigate to Settings → API Keys
+   - Create a new key and copy it
+   - See [CLAUDE_SETUP_GUIDE.md](CLAUDE_SETUP_GUIDE.md) for detailed instructions
 
 4. **Set up Supabase database**
    Run the SQL commands in the "Database Setup" section below

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useConnections } from './ConnectionContext';
 import { subscribeToConnectionEvents } from './ConnectionContext';
+import { askClaude, type SilkMessage as ClaudeMessage } from '../lib/claude';
 
 interface SilkMessage {
   id: string;
@@ -106,7 +107,7 @@ export function SilkProvider({ children }: { children: React.ReactNode }) {
     return unsubscribe;
   }, []);
 
-  const sendMessage = (message: string) => {
+  const sendMessage = async (message: string) => {
     const userMessage: SilkMessage = {
       id: Date.now().toString(),
       content: message,
@@ -116,17 +117,133 @@ export function SilkProvider({ children }: { children: React.ReactNode }) {
 
     setMessages(prev => [...prev, userMessage]);
 
-    // Generate Silk's response
-    setTimeout(() => {
-      const silkResponse = generateSilkResponse(message, connections, addConnection, updateConnection, addInteraction);
+    try {
+      // First try to handle with Claude AI
+      const conversationHistory: ClaudeMessage[] = messages.slice(-10).map(msg => ({
+        role: msg.isUser ? 'user' as const : 'assistant' as const,
+        content: msg.content
+      }));
+
+      // Process with Claude for intelligent responses
+      const claudeResponse = await askClaude(message, connections, conversationHistory);
+
+      // Check if the message requires action (adding, updating, logging)
+      const lowerMessage = message.toLowerCase();
+      let actionTaken = false;
+      let actionResponse = '';
+
+      // Handle adding people via Silk
+      if (lowerMessage.includes('add') && (lowerMessage.includes('to my web') || lowerMessage.includes('to web') || lowerMessage.includes('my web') || lowerMessage.includes('friend') || lowerMessage.includes('colleague') || lowerMessage.includes('family'))) {
+        const result = parseNaturalLanguageAdd(message, addConnection, addInteraction);
+
+        addConnection({
+          name: result.name,
+          relationship: result.relationship,
+          priority: result.priority,
+          phone: result.phone,
+          email: result.email,
+          notes: result.notes,
+          tags: result.tags,
+          contactFrequency: result.contactFrequency,
+          cluster: result.cluster,
+          lastContact: result.lastContact,
+          funFacts: [],
+          importantDates: []
+        });
+
+        if (result.hadInteraction) {
+          setTimeout(() => {
+            const newConnection = connections.find(c => c.name.toLowerCase() === result.name.toLowerCase());
+            if (newConnection) {
+              addInteraction(newConnection.id, {
+                type: 'social',
+                date: result.lastContact,
+                notes: result.interactionNotes,
+                quality: 8
+              });
+            }
+          }, 100);
+        }
+
+        actionTaken = true;
+        actionResponse = `✅ Added ${result.name} to your WEB!`;
+      }
+
+      // Handle logging interactions
+      else if (lowerMessage.includes('hung out') || lowerMessage.includes('saw') ||
+          lowerMessage.includes('met with') || lowerMessage.includes('had coffee') ||
+          lowerMessage.includes('had lunch') || lowerMessage.includes('dinner with') ||
+          lowerMessage.includes('called')) {
+        const nameMatch = message.match(/(?:hung out with|saw|met with|had coffee with|had lunch with|dinner with|called|went to.*with)\s+([a-zA-Z\s]+?)(?:\s+yesterday|\s+today|\s+this week|\s+sometime|\s+and|\s*$)/i);
+
+        if (nameMatch) {
+          const name = nameMatch[1].trim();
+          const connection = connections.find(c => c.name.toLowerCase().includes(name.toLowerCase()));
+
+          if (connection) {
+            let interactionDate = new Date();
+            if (lowerMessage.includes('yesterday')) {
+              interactionDate.setDate(interactionDate.getDate() - 1);
+            }
+
+            let interactionType: 'call' | 'text' | 'email' | 'meeting' | 'social' = 'social';
+            if (lowerMessage.includes('called')) interactionType = 'call';
+            else if (lowerMessage.includes('coffee') || lowerMessage.includes('lunch') || lowerMessage.includes('dinner')) interactionType = 'meeting';
+
+            addInteraction(connection.id, {
+              type: interactionType,
+              date: interactionDate,
+              notes: `Logged via Silk: "${message}"`,
+              quality: 8
+            });
+
+            actionTaken = true;
+            actionResponse = `✅ Logged your interaction with ${connection.name}!`;
+          }
+        }
+      }
+
+      // Handle priority updates
+      else if ((lowerMessage.includes('move') || lowerMessage.includes('set') || lowerMessage.includes('change')) &&
+          (lowerMessage.includes('p1') || lowerMessage.includes('p2') || lowerMessage.includes('p3') || lowerMessage.includes('priority'))) {
+        const nameMatch = message.match(/(move|set|change)\s+([a-zA-Z\s]+?)\s+(?:to\s+)?p?([123])/i);
+        const priorityMatch = message.match(/p([123])/i);
+
+        if (nameMatch && priorityMatch) {
+          const name = nameMatch[2].trim();
+          const priority = `P${priorityMatch[1]}` as 'P1' | 'P2' | 'P3';
+          const connection = connections.find(c => c.name.toLowerCase().includes(name.toLowerCase()));
+
+          if (connection) {
+            updateConnection(connection.id, { priority });
+            actionTaken = true;
+            actionResponse = `✅ Updated ${connection.name} to ${priority} priority!`;
+          }
+        }
+      }
+
+      // Use Claude's response combined with action feedback
+      const finalResponse = actionTaken ? `${actionResponse}\n\n${claudeResponse}` : claudeResponse;
+
       const silkMessage: SilkMessage = {
         id: (Date.now() + 1).toString(),
-        content: silkResponse,
+        content: finalResponse,
         isUser: false,
         timestamp: new Date()
       };
       setMessages(prev => [...prev, silkMessage]);
-    }, 500);
+    } catch (error) {
+      console.error('Error generating response:', error);
+      // Fallback to original logic if Claude fails
+      const fallbackResponse = generateSilkResponse(message, connections, addConnection, updateConnection, addInteraction);
+      const silkMessage: SilkMessage = {
+        id: (Date.now() + 1).toString(),
+        content: fallbackResponse,
+        isUser: false,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, silkMessage]);
+    }
   };
 
   const processVoiceCommand = (command: string) => {
