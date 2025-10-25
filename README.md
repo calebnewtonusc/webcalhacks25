@@ -552,33 +552,13 @@ Track important dates: birthdays, anniversaries, job changes, graduations
 
 ---
 
-## 👥 Team Roles
+## 👥 Team
 
-### Caleb
-- Basic front-end and backend
-- Upload to GitHub
-- Research similar apps
-- Train AI database
-- API integrations (contacts, calendar, photos)
-- Find USC animator
-- Project management frameworks
-
-### Andy
-- Figma designs (Web/Page layouts)
-- Branding (logo, avatar, color schemes)
-- Profile design options
-- Account setup steps
-- Connection line layouts (colors, dotted, bold)
-- Find web/spider-themed terms
-
-### AJ
-- Contact info form
-- Designer brainstorming
-- UI/UX collaboration
-
-### Roy
-- Lovable.dev guidance
-- Backend architecture
+### Current Team
+- **Joel** - Lead Developer
+- **Samuel** - Developer
+- **Rianna** - Developer
+- **Ian** - Developer
 
 ---
 
