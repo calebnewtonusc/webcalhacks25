@@ -1,4 +1,4 @@
-import { analyzeRelationshipHealth, generateReconnectionSuggestion, type Connection } from '../lib/claude';
+import { analyzeRelationshipHealth, generateReconnectionSuggestion, type Connection } from '../lib/gemini';
 
 /**
  * Intelligence Service - Provides AI-powered insights and suggestions

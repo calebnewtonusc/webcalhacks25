@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useConnections } from './ConnectionContext';
 import { subscribeToConnectionEvents } from './ConnectionContext';
-import { askClaude, type SilkMessage as ClaudeMessage } from '../lib/claude';
+import { askGemini, type SilkMessage as GeminiMessage } from '../lib/gemini';
 
 interface SilkMessage {
   id: string;
@@ -118,14 +118,14 @@ export function SilkProvider({ children }: { children: React.ReactNode }) {
     setMessages(prev => [...prev, userMessage]);
 
     try {
-      // First try to handle with Claude AI
-      const conversationHistory: ClaudeMessage[] = messages.slice(-10).map(msg => ({
+      // First try to handle with Gemini AI
+      const conversationHistory: GeminiMessage[] = messages.slice(-10).map(msg => ({
         role: msg.isUser ? 'user' as const : 'assistant' as const,
         content: msg.content
       }));
 
-      // Process with Claude for intelligent responses
-      const claudeResponse = await askClaude(message, connections, conversationHistory);
+      // Process with Gemini for intelligent responses
+      const geminiResponse = await askGemini(message, connections, conversationHistory);
 
       // Check if the message requires action (adding, updating, logging)
       const lowerMessage = message.toLowerCase();
@@ -222,8 +222,8 @@ export function SilkProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // Use Claude's response combined with action feedback
-      const finalResponse = actionTaken ? `${actionResponse}\n\n${claudeResponse}` : claudeResponse;
+      // Use Gemini's response combined with action feedback
+      const finalResponse = actionTaken ? `${actionResponse}\n\n${geminiResponse}` : geminiResponse;
 
       const silkMessage: SilkMessage = {
         id: (Date.now() + 1).toString(),

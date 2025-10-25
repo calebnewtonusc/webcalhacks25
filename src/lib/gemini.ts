@@ -1,14 +1,14 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { generateText } from 'ai';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 
-const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
+const apiKey = import.meta.env.VITE_GOOGLE_GENERATIVE_AI_API_KEY;
 
 if (!apiKey) {
-  console.warn('Anthropic API key not found. Claude AI features will be limited.');
+  console.warn('Google Generative AI API key not found. Gemini AI features will be limited.');
 }
 
-export const anthropic = apiKey ? new Anthropic({
-  apiKey,
-  dangerouslyAllowBrowser: true // Note: For production, use a backend proxy
+export const google = apiKey ? createGoogleGenerativeAI({
+  apiKey
 }) : null;
 
 export interface Connection {
@@ -66,16 +66,16 @@ ${connectionSummary || 'No connections yet.'}
 - Warm, supportive, and encouraging
 - Proactive about relationship health
 - Data-driven but empathetic
-- Concise and actionable
+- Concise and actionable (keep responses 2-4 sentences for simple queries)
 - Never guilt-inducing, always motivating
 
 ## Response Guidelines:
-- Keep responses concise (2-3 sentences for simple queries)
-- Use emojis sparingly and appropriately
+- Keep responses concise and friendly
+- Use emojis sparingly (✅ 🔴 ⭐ only when helpful)
 - When logging interactions, confirm what was logged
 - When unable to find a person, suggest alternatives
 - Provide specific, actionable suggestions
-- Format lists clearly with bullet points or numbers
+- Format lists clearly with bullet points when needed
 
 ## Natural Language Understanding:
 You can understand and process:
@@ -90,49 +90,46 @@ Always extract names, dates, and relationship information accurately from user i
 }
 
 /**
- * Call Claude AI to generate a response
+ * Ask Gemini AI to generate a response
  */
-export async function askClaude(
+export async function askGemini(
   userMessage: string,
   connections: Connection[],
   conversationHistory: SilkMessage[] = []
 ): Promise<string> {
-  if (!anthropic) {
-    return "Claude AI is not configured. Please add your Anthropic API key to the .env file. In the meantime, I can still help with basic commands.";
+  if (!google) {
+    return "Gemini AI is not configured. Please add your Google Generative AI API key to the .env file. In the meantime, I can still help with basic commands.";
   }
 
   try {
     const systemPrompt = generateSilkSystemPrompt(connections);
 
-    const messages: Anthropic.MessageParam[] = [
-      ...conversationHistory.map(msg => ({
-        role: msg.role,
-        content: msg.content
-      })),
-      {
-        role: 'user' as const,
-        content: userMessage
-      }
-    ];
+    // Build conversation context
+    const conversationContext = conversationHistory
+      .slice(-6) // Last 6 messages for context
+      .map(msg => `${msg.role === 'user' ? 'User' : 'Silk'}: ${msg.content}`)
+      .join('\n');
 
-    const response = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 1024,
-      system: systemPrompt,
-      messages
+    const fullPrompt = `${systemPrompt}
+
+${conversationContext ? `Recent conversation:\n${conversationContext}\n` : ''}
+User: ${userMessage}
+
+Silk:`;
+
+    const { text } = await generateText({
+      model: google('gemini-2.0-flash-exp'),
+      prompt: fullPrompt,
+      maxTokens: 500,
+      temperature: 0.7,
     });
 
-    const content = response.content[0];
-    if (content.type === 'text') {
-      return content.text;
-    }
-
-    return "I couldn't generate a response. Please try again.";
+    return text;
   } catch (error) {
-    console.error('Claude API error:', error);
+    console.error('Gemini API error:', error);
     if (error instanceof Error) {
       if (error.message.includes('API key')) {
-        return "Invalid API key. Please check your Anthropic API key in the .env file.";
+        return "Invalid API key. Please check your Google Generative AI API key in the .env file.";
       }
       return `Error: ${error.message}`;
     }
@@ -144,11 +141,9 @@ export async function askClaude(
  * Analyze relationship health and provide insights
  */
 export async function analyzeRelationshipHealth(connections: Connection[]): Promise<string> {
-  if (!anthropic) {
-    return "Claude AI analysis is not available. Please configure your API key.";
+  if (!google) {
+    return "Gemini AI analysis is not available. Please configure your API key.";
   }
-
-  const systemPrompt = `You are a relationship health analyst. Analyze the user's social network and provide actionable insights.`;
 
   const connectionData = connections.map(c => ({
     name: c.name,
@@ -159,65 +154,64 @@ export async function analyzeRelationshipHealth(connections: Connection[]): Prom
     totalInteractions: c.interactions.length
   }));
 
-  const userMessage = `Analyze this social network and provide 3-5 specific, actionable insights:\n\n${JSON.stringify(connectionData, null, 2)}`;
+  const prompt = `Analyze this social network and provide 3-5 specific, actionable insights about relationship health. Be concise and helpful:
+
+${JSON.stringify(connectionData, null, 2)}
+
+Focus on:
+- Who needs attention most urgently
+- Overall network health patterns
+- Specific recommendations for strengthening connections
+- Positive reinforcement for what's going well
+
+Keep it brief and actionable.`;
 
   try {
-    const response = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 512,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userMessage }]
+    const { text } = await generateText({
+      model: google('gemini-2.0-flash-exp'),
+      prompt,
+      maxTokens: 400,
+      temperature: 0.7,
     });
 
-    const content = response.content[0];
-    if (content.type === 'text') {
-      return content.text;
-    }
-
-    return "Unable to generate analysis.";
+    return text;
   } catch (error) {
     console.error('Analysis error:', error);
-    return "Error analyzing relationship health.";
+    return "Error analyzing relationship health. Please try again.";
   }
 }
 
 /**
- * Generate personalized reconnection suggestions
+ * Generate personalized reconnection suggestion
  */
 export async function generateReconnectionSuggestion(connection: Connection): Promise<string> {
-  if (!anthropic) {
+  if (!google) {
     return `Reach out to ${connection.name} - it's been a while!`;
   }
 
   const daysSinceContact = Math.floor((Date.now() - connection.lastContact.getTime()) / (1000 * 60 * 60 * 24));
 
-  const systemPrompt = `You are a relationship coach. Generate a warm, specific suggestion for reconnecting with someone.`;
+  const prompt = `Generate a brief (1-2 sentences) personalized suggestion for reconnecting with someone:
 
-  const userMessage = `Generate a brief (1-2 sentences) personalized suggestion for reconnecting with:
 Name: ${connection.name}
 Relationship: ${connection.relationship}
 Days since last contact: ${daysSinceContact}
 Notes: ${connection.notes || 'No notes'}
 Tags/Interests: ${connection.tags?.join(', ') || 'None'}
 
-Make it specific, warm, and actionable.`;
+Make it specific, warm, and actionable based on their interests.`;
 
   try {
-    const response = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 150,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userMessage }]
+    const { text } = await generateText({
+      model: google('gemini-2.0-flash-exp'),
+      prompt,
+      maxTokens: 100,
+      temperature: 0.8,
     });
 
-    const content = response.content[0];
-    if (content.type === 'text') {
-      return content.text;
-    }
-
-    return `Reach out to ${connection.name} - it's been ${daysSinceContact} days!`;
+    return text;
   } catch (error) {
     console.error('Suggestion error:', error);
-    return `Consider reaching out to ${connection.name} soon.`;
+    return `Reach out to ${connection.name} - it's been ${daysSinceContact} days!`;
   }
 }
